@@ -429,99 +429,102 @@ def ingest_data(data_path: str):
         disk_conn.close()
 
 
+# Initialize session state storage for extracted folder
+if "extracted_dir" not in st.session_state:
+    st.session_state["extracted_dir"] = None
 
 uploaded_zip = st.file_uploader("Choose a zip file", type=["zip"])
 
-if uploaded_zip is not None:
-    # Process the uploaded file
-    st.write("File uploaded!")
-    # Proceed to extraction and processing
-
-
-selected_folder = None
-if uploaded_zip is not None:
+if uploaded_zip is not None and st.session_state["extracted_dir"] is None:
+    # Create a persistent temp directory (not auto-deleted)
+    tmpdir = tempfile.mkdtemp()
     with zipfile.ZipFile(uploaded_zip, 'r') as zf:
-        # Create a temporary directory to extract files into
-        with tempfile.TemporaryDirectory() as tmpdir:
-            zf.extractall(tmpdir)
+        zf.extractall(tmpdir)
 
-            selected_folder = tmpdir
+    st.session_state["extracted_dir"] = tmpdir
+    st.write("File extracted successfully!")
 
-            st.title("Lyra Analysis")
+selected_folder = st.session_state["extracted_dir"]
 
-            # Folder selector dropdown
-            # folder_options = ["Folder 1", "Folder 2", "Folder 3"]  # replace with dynamic folder listing if needed
-            # selected_folder = "/Users/samrandall/Downloads/TRANSCRIPTS"
+if selected_folder:
+    st.write(f"Selected Folder: {selected_folder}")
+    st.write("Files:", os.listdir(selected_folder))
 
-            # Ingest button
-            if st.button("Ingest"):
-                st.write(f"Running expensive ingestion script for folder: {selected_folder}...")
-                # Call your expensive script here
-                # e.g., run_ingest_script(selected_folder)
-                ingest_data(selected_folder)
-                # Make sure to use caching or background threads if it takes long
-                st.success("Ingestion complete!")
+st.title("Lyra Analysis")
 
-            # Speaker type dropdown
-            speaker_type = st.selectbox("Select Speaker", ["Lyra", "User", "Specific User"])
+# Folder selector dropdown
+# folder_options = ["Folder 1", "Folder 2", "Folder 3"]  # replace with dynamic folder listing if needed
+# selected_folder = "/Users/samrandall/Downloads/TRANSCRIPTS"
 
-            st.write(f"Selected Speaker: {speaker_type}")
-            st.write(f"Selected Folder: {selected_folder}")
+# Ingest button
+if st.button("Ingest"):
+    st.write(f"Running expensive ingestion script for folder: {selected_folder}...")
+    # Call your expensive script here
+    # e.g., run_ingest_script(selected_folder)
+    ingest_data(selected_folder)
+    # Make sure to use caching or background threads if it takes long
+    st.success("Ingestion complete!")
 
+# Speaker type dropdown
+speaker_type = st.selectbox("Select Speaker", ["Lyra", "User", "Specific User"])
 
-
-            # Exclusive expandable panels
-            panel = st.radio("Select Analysis Panel", ["Sentence Length", "Word Analysis", "Bigram Analysis"])
-
-            # -------------------------------
-            # Sentence Length Panel
-            # -------------------------------
-            if panel == "Sentence Length":
-                st.subheader("Sentence Length Analysis")
-
-                with sqlite3.connect(':memory') as conn:
-                    cursor = conn.cursor()
-                    col1, col2 = st.columns([1, 2])  # 1:2 ratio
-                    if speaker_type.lower() in ["lyra", "user"]:
-                        out = get_messages_sentence_length_percentiles_sqlite(conn, cursor, speaker_type.lower())
-                        with col1:
-                            st.write(out)
+st.write(f"Selected Speaker: {speaker_type}")
+st.write(f"Selected Folder: {selected_folder}")
 
 
-                        with col2:
-                            st.subheader("Longest Messages.")
-                            top_messages: list[str] = get_messages_above_percentile_sqlite(
-                                conn,
-                                cursor,
-                                speaker_type.lower(),
-                                percentile=0.95
-                            )
-                            if top_messages:
-                                for i, msg in enumerate(top_messages, start=1):
-                                    st.write(f"{i}. {msg}")
-                            else:
-                                st.write("No messages found above the selected percentile.")
-                    else:
-                        st.write("Not yet implemented.")
+
+# Exclusive expandable panels
+panel = st.radio("Select Analysis Panel", ["Sentence Length", "Word Analysis", "Bigram Analysis"])
+
+# -------------------------------
+# Sentence Length Panel
+# -------------------------------
+if panel == "Sentence Length":
+    st.subheader("Sentence Length Analysis")
+
+    with sqlite3.connect(':memory') as conn:
+        cursor = conn.cursor()
+        col1, col2 = st.columns([1, 2])  # 1:2 ratio
+        if speaker_type.lower() in ["lyra", "user"]:
+            out = get_messages_sentence_length_percentiles_sqlite(conn, cursor, speaker_type.lower())
+            with col1:
+                st.write(out)
 
 
-            # -------------------------------
-            # Word Analysis Panel
-            # -------------------------------
-            elif panel == "Word Analysis":
-                st.subheader("Top Words")
-                with sqlite3.connect(':memory') as conn:
-                    cursor = conn.cursor()
-                    phrase_freqs = get_phrase_frequencies(conn, cursor, speaker_type.lower(), limit = 50, num_words = 1)
-                    df = pd.DataFrame(phrase_freqs, columns=["Phrase", "Frequency"])
-                    st.table(df)
-            # -------------------------------
-            # Bigram Analysis Panel
-            # -------------------------------
-            elif panel == "Bigram Analysis":
-                st.subheader("Top Bigrams")
-                with sqlite3.connect(':memory') as conn:
-                    cursor = conn.cursor()
-                    phrase_freqs = get_phrase_frequencies(conn, cursor, speaker_type.lower(), limit = 50, num_words = 2)
-                    df = pd.DataFrame(phrase_freqs, columns=["Phrase", "Frequency"])
-                    st.table(df)
+            with col2:
+                st.subheader("Longest Messages.")
+                top_messages: list[str] = get_messages_above_percentile_sqlite(
+                    conn,
+                    cursor,
+                    speaker_type.lower(),
+                    percentile=0.95
+                )
+                if top_messages:
+                    for i, msg in enumerate(top_messages, start=1):
+                        st.write(f"{i}. {msg}")
+                else:
+                    st.write("No messages found above the selected percentile.")
+        else:
+            st.write("Not yet implemented.")
+
+
+# -------------------------------
+# Word Analysis Panel
+# -------------------------------
+elif panel == "Word Analysis":
+    st.subheader("Top Words")
+    with sqlite3.connect(':memory') as conn:
+        cursor = conn.cursor()
+        phrase_freqs = get_phrase_frequencies(conn, cursor, speaker_type.lower(), limit = 50, num_words = 1)
+        df = pd.DataFrame(phrase_freqs, columns=["Phrase", "Frequency"])
+        st.table(df)
+# -------------------------------
+# Bigram Analysis Panel
+# -------------------------------
+elif panel == "Bigram Analysis":
+    st.subheader("Top Bigrams")
+    with sqlite3.connect(':memory') as conn:
+        cursor = conn.cursor()
+        phrase_freqs = get_phrase_frequencies(conn, cursor, speaker_type.lower(), limit = 50, num_words = 2)
+        df = pd.DataFrame(phrase_freqs, columns=["Phrase", "Frequency"])
+        st.table(df)
