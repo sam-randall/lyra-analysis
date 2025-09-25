@@ -429,11 +429,28 @@ def ingest_data(data_path: str):
 
 
 
+uploaded_zip = st.file_uploader("Choose a zip file", type=["zip"])
+
+if uploaded_zip is not None:
+    # Process the uploaded file
+    st.write("File uploaded!")
+    # Proceed to extraction and processing
+
+
+selected_folder = None
+if uploaded_zip is not None:
+    with zipfile.ZipFile(uploaded_zip, 'r') as zf:
+        # Create a temporary directory to extract files into
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            zf.extractall(tmpdir)
+
+            selected_folder = tmpdir
+
 st.title("Lyra Analysis")
 
 # Folder selector dropdown
 # folder_options = ["Folder 1", "Folder 2", "Folder 3"]  # replace with dynamic folder listing if needed
-selected_folder = "/Users/samrandall/Downloads/TRANSCRIPTS"
+# selected_folder = "/Users/samrandall/Downloads/TRANSCRIPTS"
 
 # Ingest button
 if st.button("Ingest"):
