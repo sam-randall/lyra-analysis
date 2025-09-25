@@ -442,7 +442,7 @@ selected_folder = None
 if uploaded_zip is not None:
     with zipfile.ZipFile(uploaded_zip, 'r') as zf:
         # Create a temporary directory to extract files into
-        with tempfile.TemporaryDirectory() as tmpdirname:
+        with tempfile.TemporaryDirectory() as tmpdir:
             zf.extractall(tmpdir)
 
             selected_folder = tmpdir
