@@ -451,12 +451,6 @@ if uploaded_zip is not None and st.session_state["extracted_dir"] is None:
     st.session_state["extracted_dir"] = tmpdir
     st.write("File extracted successfully!")
 
-selected_folder = st.session_state["extracted_dir"]
-
-if selected_folder:
-    st.write(f"Selected Folder: {selected_folder}")
-    st.write("Files:", os.listdir(selected_folder))
-
 selected_folder = os.path.join(tmpdir, "TRANSCRIPTS")
 
 st.title("Lyra Analysis")
