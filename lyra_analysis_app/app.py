@@ -435,7 +435,7 @@ if "extracted_dir" not in st.session_state:
 
 uploaded_zip = st.file_uploader("Choose a zip file", type=["zip"])
 
-os.mkdir('./data', exists_ok = True)
+os.makedirs('./data', exist_ok = True)
 tmpdir = './data'
 
 if uploaded_zip is not None and st.session_state["extracted_dir"] is None:
